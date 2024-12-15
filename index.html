@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Skin Disease Detector</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-image: url('2.jpg'); /* Replace with your image path */
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2em;
+            margin-left: 2px;
+            height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 50%;
+            text-transform: uppercase;
+            transition: transform 0.2s ease, background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(1);
+        }
+
+        video, canvas {
+            display: block;
+            margin: 20px auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 300px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Skin Disease Detection</h1>
+        <button onclick="useCamera()">Use Camera</button>
+        <button onclick="uploadImage()">Upload Image</button>
+
+        <!-- Video element for camera feed -->
+        <video id="video" width="300" height="200" autoplay style="display: none;"></video>
+        <button id="captureButton" style="display: none;" onclick="captureImage()">Capture Image</button>
+
+        <!-- Canvas for captured image -->
+        <canvas id="canvas" width="300" height="200" style="display: none;"></canvas>
+
+        <!-- File input for upload functionality -->
+        <input type="file" id="fileInput" onchange="uploadFile()">
+    </div>
+    <script>
+        function useCamera() {
+            const video = document.getElementById('video');
+            const captureButton = document.getElementById('captureButton');
+
+            // Request access to the camera
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    video.style.display = 'block';
+                    captureButton.style.display = 'block';
+                    video.srcObject = stream;
+                })
+                .catch((err) => {
+                    alert('Camera access denied or not available.');
+                    console.error(err);
+                });
+        }
+
+        function captureImage() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+
+            // Draw the current video frame onto the canvas
+            canvas.style.display = 'block';
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Stop the video stream
+            const stream = video.srcObject;
+            const tracks = stream.getTracks();
+            tracks.forEach((track) => track.stop());
+            video.style.display = 'none';
+
+            // Convert the canvas image to base64
+            const base64Image = canvas.toDataURL('image/jpeg');
+
+            // Send the captured image to the server for prediction
+            fetch('/camera', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Image }),
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url; // Redirect to the result page
+                }
+            })
+            .catch(error => console.error(error));
+        }
+
+        function uploadImage() {
+            document.getElementById('fileInput').click();
+        }
+
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url; // Redirect to the result page
+                }
+            })
+            .catch(error => console.error(error));
+        }
+    </script>
+</body>
+</html>
